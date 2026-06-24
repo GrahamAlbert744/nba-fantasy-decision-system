@@ -1,0 +1,35 @@
+# Environment files
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Conda / virtual envs
+.venv/
+env/
+venv/
+
+# Data outputs that may be large or private
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+data/league_snapshots/*
+data/draft_boards/*
+data/outputs/*
+
+# Keep folder structure
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+!data/league_snapshots/.gitkeep
+!data/draft_boards/.gitkeep
+!data/outputs/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
