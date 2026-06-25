@@ -1,9 +1,11 @@
 import pandas as pd
 
-
-COUNTING_CATEGORIES = ["pts", "reb", "ast", "stl", "blk", "threes"]
-PERCENTAGE_IMPACT_CATEGORIES = ["fg_impact", "ft_impact"]
-NEGATIVE_CATEGORIES = ["to"]
+from nba_fantasy.categories import (
+    COUNTING_CATEGORIES,
+    NEGATIVE_CATEGORIES,
+    PERCENTAGE_IMPACT_CATEGORIES,
+    get_punt_categories,
+)
 
 
 def zscore(series: pd.Series) -> pd.Series:
@@ -20,11 +22,9 @@ def add_percentage_impacts(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add volume-weighted FG% and FT% impact estimates.
 
-    Simple MVP logic:
-    - FG impact = (player FG% - league/player-pool average FG%) * FGA
-    - FT impact = (player FT% - league/player-pool average FT%) * FTA
-
-    This is better than scoring raw FG% and FT% because volume matters.
+    MVP logic:
+    - FG impact = (player FG% - player-pool average FG%) * FGA
+    - FT impact = (player FT% - player-pool average FT%) * FTA
     """
     out = df.copy()
 
@@ -39,7 +39,11 @@ def add_percentage_impacts(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def add_9cat_scores(df: pd.DataFrame, punt_categories=None) -> pd.DataFrame:
+def add_9cat_scores(
+    df: pd.DataFrame,
+    punt_categories: list[str] | None = None,
+    punt_strategy: str | None = None,
+) -> pd.DataFrame:
     """
     Add 9-category fantasy basketball z-score values.
 
@@ -49,11 +53,16 @@ def add_9cat_scores(df: pd.DataFrame, punt_categories=None) -> pd.DataFrame:
         Player stat dataframe.
     punt_categories:
         Optional list of categories to ignore, such as ["ft_impact"] or ["to"].
+    punt_strategy:
+        Optional named strategy, such as "balanced", "punt_ft", or "punt_to".
 
     Returns
     -------
     DataFrame sorted by total 9-category value.
     """
+    if punt_strategy is not None:
+        punt_categories = get_punt_categories(punt_strategy)
+
     if punt_categories is None:
         punt_categories = []
 

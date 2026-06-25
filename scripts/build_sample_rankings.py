@@ -137,8 +137,8 @@ def main() -> None:
     players = build_sample_player_data()
 
     balanced = add_9cat_scores(players)
-    punt_ft = add_9cat_scores(players, punt_categories=["ft_impact"])
-    punt_to = add_9cat_scores(players, punt_categories=["to"])
+    punt_ft = add_9cat_scores(players, punt_strategy="punt_ft")
+    punt_to = add_9cat_scores(players, punt_strategy="punt_to")
 
     balanced.to_csv(output_dir / "sample_player_rankings_balanced.csv", index=False)
     punt_ft.to_csv(output_dir / "sample_player_rankings_punt_ft.csv", index=False)
