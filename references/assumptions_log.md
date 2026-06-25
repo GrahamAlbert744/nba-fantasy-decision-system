@@ -54,3 +54,45 @@ Date: 2026-06-24
 
 &#x20;  (player FG% - player-pool average FG%) \* FGA
 
+
+
+\---
+
+
+
+\## Phase 3A — Connector Integration Assumptions
+
+
+
+Date: 2026-06-25
+
+
+
+\### Current connector assumptions
+
+
+
+1\. Flaim Fantasy is the primary connector for Yahoo league-specific fantasy data.
+
+2\. Flaim can currently return league information, roster context, standings, and free agents.
+
+3\. DraftKings is optional and currently unavailable because the NBA configuration call returned HTTP 403 Access Denied.
+
+4\. The project should not depend on DraftKings for core functionality.
+
+5\. Free-agent output from Flaim does not currently provide enough statistical projection data to rank players by itself.
+
+6\. Free-agent analysis will require merging Flaim availability data with a player projection/ranking dataset.
+
+
+
+\### Project decision
+
+
+
+Continue with a Flaim + Python architecture.
+
+
+
+DraftKings should only be re-tested later if schedule or matchup context becomes necessary.
+
