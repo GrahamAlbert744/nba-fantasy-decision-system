@@ -6,6 +6,7 @@ from nba_fantasy.categories import (
     PERCENTAGE_IMPACT_CATEGORIES,
     get_punt_categories,
 )
+from nba_fantasy.data_quality import validate_player_scoring_input
 
 
 def zscore(series: pd.Series) -> pd.Series:
@@ -60,6 +61,8 @@ def add_9cat_scores(
     -------
     DataFrame sorted by total 9-category value.
     """
+    validate_player_scoring_input(df)
+
     if punt_strategy is not None:
         punt_categories = get_punt_categories(punt_strategy)
 

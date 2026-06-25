@@ -96,3 +96,69 @@ Continue with a Flaim + Python architecture.
 
 DraftKings should only be re-tested later if schedule or matchup context becomes necessary.
 
+
+
+\---
+
+
+
+\## Phase 3B — Validation and Schema Assumptions
+
+
+
+Date: 2026-06-25
+
+
+
+\### Current validation assumptions
+
+
+
+1\. Any player dataset used by the scoring model must include required scoring columns.
+
+2\. The required scoring columns are:
+
+&#x20;  - player
+
+&#x20;  - pts
+
+&#x20;  - reb
+
+&#x20;  - ast
+
+&#x20;  - stl
+
+&#x20;  - blk
+
+&#x20;  - threes
+
+&#x20;  - fg\_pct
+
+&#x20;  - fga
+
+&#x20;  - ft\_pct
+
+&#x20;  - fta
+
+&#x20;  - to
+
+3\. Scoring stat columns must be numeric.
+
+4\. Required scoring fields cannot contain missing values.
+
+5\. Flaim free-agent data alone is not sufficient for scoring because it does not include full statistical projections.
+
+6\. Future waiver-wire analysis will require joining Flaim availability data to a projection or player-stat dataset.
+
+
+
+\### Project decision
+
+
+
+The scoring model should validate input data before calculating rankings.
+
+
+
+Bad data should fail clearly before producing misleading fantasy rankings.
+
