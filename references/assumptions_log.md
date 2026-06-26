@@ -228,3 +228,69 @@ The scoring model should validate input data before calculating rankings.
 
 Bad data should fail clearly before producing misleading fantasy rankings.
 
+
+
+\---
+
+
+
+\## Phase 3C — Free-Agent Projection Join Assumptions
+
+
+
+Date: 2026-06-25
+
+
+
+\### Current assumptions
+
+
+
+1\. Flaim free-agent data provides availability, player team, position, and status.
+
+2\. Flaim free-agent data does not currently provide full fantasy stat projections.
+
+3\. Free-agent ranking requires joining Flaim availability data to a projection dataset.
+
+4\. Player-name matching currently uses a simple normalized name key.
+
+5\. This name-matching approach handles simple punctuation differences such as:
+
+&#x20;  - P.J. Washington vs PJ Washington
+
+&#x20;  - De'Anthony Melton vs DeAnthony Melton
+
+6\. The current projection dataset is manually created sample data.
+
+7\. The current waiver ranking is a proof of concept, not a final recommendation engine.
+
+
+
+\### Known limitations
+
+
+
+1\. Name matching may fail for suffixes, nicknames, accents, or major spelling differences.
+
+2\. The model does not yet use Yahoo player IDs for joining.
+
+3\. The model does not yet account for my roster needs.
+
+4\. The model does not yet compare available players against drop candidates.
+
+5\. The model does not yet incorporate schedule volume.
+
+6\. The model does not yet incorporate injury severity beyond retaining status labels.
+
+
+
+\### Project decision
+
+
+
+Use Flaim for availability and Python projection data for scoring.
+
+
+
+The next waiver-wire version should compare ranked free agents against the weakest players on my roster.
+
