@@ -28,6 +28,16 @@ CATEGORY_LABELS = {
 def format_category_name(category: str) -> str:
     """
     Convert internal category z-score column names to readable labels.
+
+    Parameters
+    ----------
+    category:
+        Internal category column name.
+
+    Returns
+    -------
+    str
+        Human-readable category label.
     """
     return CATEGORY_LABELS.get(category, category)
 
@@ -40,9 +50,21 @@ def dataframe_to_markdown_table(
 ) -> str:
     """
     Convert selected dataframe columns to a markdown table.
+
+    Notes
+    -----
+    This uses pandas `.to_markdown()`, which requires the `tabulate`
+    package to be installed.
     """
     available_columns = [col for col in columns if col in df.columns]
+
+    if not available_columns:
+        return "_No available columns to display._"
+
     table = df[available_columns].head(max_rows).copy()
+
+    if table.empty:
+        return "_No rows to display._"
 
     numeric_cols = table.select_dtypes(include="number").columns
     table[numeric_cols] = table[numeric_cols].round(round_digits)
@@ -59,6 +81,24 @@ def build_waiver_report(
 ) -> str:
     """
     Build a human-readable markdown waiver report.
+
+    Parameters
+    ----------
+    team_profile:
+        Series of team category totals, usually summed category z-scores.
+    weak_categories:
+        List of weak category z-score column names.
+    drop_candidates:
+        DataFrame of rostered players who may be drop candidates.
+    recommendations:
+        DataFrame of add/drop recommendations.
+    title:
+        Report title.
+
+    Returns
+    -------
+    str
+        Markdown report.
     """
     weak_category_labels = [
         format_category_name(category) for category in weak_categories
@@ -69,6 +109,7 @@ def build_waiver_report(
         .reset_index()
         .rename(columns={"index": "category"})
     )
+
     team_profile_df["category"] = team_profile_df["category"].apply(
         format_category_name
     )
@@ -81,7 +122,8 @@ def build_waiver_report(
     report_sections.append("")
     report_sections.append(
         "This report summarizes sample waiver-wire add/drop recommendations "
-        "using projected 9-category value and category-fit scoring."
+        "using projected 9-category value, category-fit scoring, recommendation "
+        "tiers, and confidence labels."
     )
     report_sections.append("")
     report_sections.append(
@@ -96,8 +138,12 @@ def build_waiver_report(
         "The current model identifies these as the weakest roster categories:"
     )
     report_sections.append("")
-    for category in weak_category_labels:
-        report_sections.append(f"- {category}")
+
+    if weak_category_labels:
+        for category in weak_category_labels:
+            report_sections.append(f"- {category}")
+    else:
+        report_sections.append("_No weak categories identified._")
 
     report_sections.append("")
     report_sections.append("## Team category profile")
@@ -137,6 +183,8 @@ def build_waiver_report(
             columns=[
                 "player_add",
                 "player_drop",
+                "recommendation_tier",
+                "confidence",
                 "value_delta",
                 "category_fit_score",
                 "combined_add_drop_score",
@@ -161,6 +209,13 @@ def build_waiver_report(
         "`value_delta + category_fit_score`."
     )
     report_sections.append(
+        "- `recommendation_tier` classifies each move as Strong add, Moderate add, "
+        "Marginal add, or Avoid."
+    )
+    report_sections.append(
+        "- `confidence` reflects the strength of the score and simple injury/status risk."
+    )
+    report_sections.append(
         "- Positive scores suggest a potentially useful add/drop pairing."
     )
     report_sections.append(
@@ -174,6 +229,18 @@ def build_waiver_report(
 def save_markdown_report(report: str, output_path: str | Path) -> Path:
     """
     Save markdown report text to disk.
+
+    Parameters
+    ----------
+    report:
+        Markdown report text.
+    output_path:
+        File path where the report should be saved.
+
+    Returns
+    -------
+    Path
+        Path to saved report.
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

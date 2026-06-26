@@ -358,6 +358,72 @@ Future versions should add category-fit logic and compare moves against the user
 
 
 
+\---
+
+
+
+\## Phase 3G — Recommendation Tier Assumptions
+
+
+
+Date: 2026-06-26
+
+
+
+\### Current assumptions
+
+
+
+1\. Add/drop recommendations should include a decision tier, not only raw scores.
+
+2\. The current recommendation tiers are:
+
+&#x20;  - Strong add
+
+&#x20;  - Moderate add
+
+&#x20;  - Marginal add
+
+&#x20;  - Avoid
+
+3\. Recommendation tier is based on combined add/drop score.
+
+4\. Confidence is based on score strength and simple injury/status flags.
+
+5\. Injured or GTD add candidates are treated as lower-confidence recommendations.
+
+
+
+\### Known limitations
+
+
+
+1\. Confidence labels are rule-based and simple.
+
+2\. Confidence does not yet account for real injury severity.
+
+3\. Confidence does not yet account for projection source quality.
+
+4\. Confidence does not yet account for schedule volume.
+
+5\. Confidence does not yet account for player role volatility.
+
+6\. Confidence does not yet account for recent news.
+
+
+
+\### Project decision
+
+
+
+Use recommendation tiers and confidence labels to make waiver reports easier to interpret.
+
+
+
+Future versions should refine confidence using injury context, schedule context, minutes trends, and projection uncertainty.
+
+
+
 
 
 \---
