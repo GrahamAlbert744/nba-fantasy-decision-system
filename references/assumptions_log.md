@@ -294,3 +294,65 @@ Use Flaim for availability and Python projection data for scoring.
 
 The next waiver-wire version should compare ranked free agents against the weakest players on my roster.
 
+
+
+\---
+
+
+
+\## Phase 3D — Add/Drop Comparison Assumptions
+
+
+
+Date: 2026-06-26
+
+
+
+\### Current assumptions
+
+
+
+1\. Rostered players and free agents can both be ranked with the same 9-category scoring model.
+
+2\. Drop candidates are currently identified as the lowest projected rostered players.
+
+3\. IL players are excluded from default drop-candidate logic because dropping them may not open an active roster slot.
+
+4\. Add/drop recommendations are currently based on projected value delta.
+
+5\. Positive value delta means the free agent projects better than the rostered drop candidate.
+
+6\. This is still a proof-of-concept and should not yet be treated as final fantasy advice.
+
+
+
+\### Known limitations
+
+
+
+1\. The model does not yet account for category needs.
+
+2\. The model does not yet account for positional scarcity.
+
+3\. The model does not yet account for schedule volume.
+
+4\. The model does not yet account for weekly matchup context.
+
+5\. The model does not yet evaluate whether dropping an IL player is strategically acceptable.
+
+6\. The model does not yet account for acquisition limits, waiver priority, or transaction timing.
+
+7\. The projection data is still manually created sample data.
+
+
+
+\### Project decision
+
+
+
+Use projected 9-category value as the first-pass add/drop comparison.
+
+
+
+Future versions should add category-fit logic and compare moves against the user's actual weekly matchup needs.
+

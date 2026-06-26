@@ -2,7 +2,8 @@
 Waiver-wire analysis helpers.
 
 This module joins league availability data from Flaim/Yahoo with projected
-player stats, then ranks available players using the 9-category scoring model.
+player stats, ranks available players, ranks rostered players, and creates
+basic add/drop comparisons.
 """
 
 from __future__ import annotations
@@ -34,18 +35,18 @@ def add_player_join_key(df: pd.DataFrame, player_col: str = "player") -> pd.Data
     return out
 
 
-def join_free_agents_to_projections(
-    free_agents: pd.DataFrame,
+def join_players_to_projections(
+    players: pd.DataFrame,
     projections: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Join Flaim/Yahoo free-agent availability to player projections.
+    Join player metadata to player projections.
     """
-    fa = add_player_join_key(free_agents)
-    proj = add_player_join_key(projections)
+    player_metadata = add_player_join_key(players)
+    projected_stats = add_player_join_key(projections)
 
-    joined = fa.merge(
-        proj.drop(columns=["player"]),
+    joined = player_metadata.merge(
+        projected_stats.drop(columns=["player"]),
         on="player_key",
         how="left",
         suffixes=("", "_projection"),
@@ -54,15 +55,25 @@ def join_free_agents_to_projections(
     return joined.drop(columns=["player_key"])
 
 
-def rank_available_players(
+def join_free_agents_to_projections(
     free_agents: pd.DataFrame,
+    projections: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Join Flaim/Yahoo free-agent availability to player projections.
+    """
+    return join_players_to_projections(free_agents, projections)
+
+
+def rank_players_with_projections(
+    players: pd.DataFrame,
     projections: pd.DataFrame,
     punt_strategy: str = "balanced",
 ) -> pd.DataFrame:
     """
-    Rank available players using projected 9-category value.
+    Rank any player list using projected 9-category value.
     """
-    joined = join_free_agents_to_projections(free_agents, projections)
+    joined = join_players_to_projections(players, projections)
 
     scoring_columns = [
         "player",
@@ -82,7 +93,12 @@ def rank_available_players(
     players_to_score = joined[scoring_columns].copy()
     scored = add_9cat_scores(players_to_score, punt_strategy=punt_strategy)
 
-    metadata_columns = ["player", "team", "position", "status"]
+    metadata_columns = [
+        col
+        for col in ["player", "team", "position", "status", "roster_slot"]
+        if col in joined.columns
+    ]
+
     metadata = joined[metadata_columns].copy()
 
     ranked = metadata.merge(
@@ -92,3 +108,104 @@ def rank_available_players(
     )
 
     return ranked.sort_values("total_9cat_z", ascending=False).reset_index(drop=True)
+
+
+def rank_available_players(
+    free_agents: pd.DataFrame,
+    projections: pd.DataFrame,
+    punt_strategy: str = "balanced",
+) -> pd.DataFrame:
+    """
+    Rank available players using projected 9-category value.
+    """
+    return rank_players_with_projections(
+        players=free_agents,
+        projections=projections,
+        punt_strategy=punt_strategy,
+    )
+
+
+def rank_rostered_players(
+    roster: pd.DataFrame,
+    projections: pd.DataFrame,
+    punt_strategy: str = "balanced",
+) -> pd.DataFrame:
+    """
+    Rank rostered players using projected 9-category value.
+    """
+    return rank_players_with_projections(
+        players=roster,
+        projections=projections,
+        punt_strategy=punt_strategy,
+    )
+
+
+def identify_drop_candidates(
+    ranked_roster: pd.DataFrame,
+    exclude_slots: list[str] | None = None,
+    n: int = 5,
+) -> pd.DataFrame:
+    """
+    Identify the lowest-ranked rostered players as drop candidates.
+
+    By default, IL players are excluded because dropping injured-list players
+    may not create an active roster spot.
+    """
+    if exclude_slots is None:
+        exclude_slots = ["IL"]
+
+    out = ranked_roster.copy()
+
+    if "roster_slot" in out.columns:
+        out = out[~out["roster_slot"].isin(exclude_slots)]
+
+    return out.sort_values("total_9cat_z", ascending=True).head(n).reset_index(drop=True)
+
+
+def create_add_drop_recommendations(
+    ranked_free_agents: pd.DataFrame,
+    drop_candidates: pd.DataFrame,
+    top_adds: int = 5,
+) -> pd.DataFrame:
+    """
+    Create simple add/drop pairings.
+
+    Each top free agent is compared against each drop candidate.
+    Positive value_delta means the free agent projects better than the drop.
+    """
+    adds = ranked_free_agents.head(top_adds).copy()
+    drops = drop_candidates.copy()
+
+    recommendations = adds.merge(
+        drops,
+        how="cross",
+        suffixes=("_add", "_drop"),
+    )
+
+    recommendations["value_delta"] = (
+        recommendations["total_9cat_z_add"]
+        - recommendations["total_9cat_z_drop"]
+    )
+
+    columns = [
+        "player_add",
+        "team_add",
+        "position_add",
+        "status_add",
+        "total_9cat_z_add",
+        "player_drop",
+        "team_drop",
+        "position_drop",
+        "status_drop",
+        "roster_slot",
+        "total_9cat_z_drop",
+        "value_delta",
+    ]
+
+    available_columns = [col for col in columns if col in recommendations.columns]
+
+    return (
+        recommendations[available_columns]
+        .sort_values("value_delta", ascending=False)
+        .reset_index(drop=True)
+    )
