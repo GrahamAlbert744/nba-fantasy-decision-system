@@ -356,3 +356,41 @@ Use projected 9-category value as the first-pass add/drop comparison.
 
 Future versions should add category-fit logic and compare moves against the user's actual weekly matchup needs.
 
+
+
+
+
+\---
+
+
+
+\## Phase 3E — Category-Fit Add/Drop Assumptions
+
+
+
+Date: 2026-06-26
+
+
+
+\### Current assumptions
+
+
+
+1\. Total projected value is not enough for waiver-wire decisions.
+
+2\. A free agent is more useful if they improve categories where the roster is weak.
+
+3\. Team category profile is currently estimated by summing rostered players' category z-scores.
+
+4\. Weak categories are currently the lowest team category z-score totals.
+
+5\. Category-fit score is calculated by comparing the add player's z-score against the drop player's z-score in weak categories.
+
+6\. Combined add/drop score is currently:
+
+
+
+&#x20;  ```text
+
+&#x20;  value\_delta + category\_fit\_score
+
