@@ -546,3 +546,27 @@ Date: 2026-06-28
 Use `src/nba_fantasy/snapshots.py` as the conversion layer between Flaim connector output and local CSV snapshots.
 
 Future versions should date-stamp snapshots and feed them into the waiver analysis workflow.
+
+---
+
+## Phase 3K — Date-Stamped Waiver Report Assumptions
+
+Date: 2026-06-29
+
+### Current assumptions
+
+1. Each waiver analysis run should produce a dated archive report.
+2. The workflow should also maintain a stable latest report named `waiver_wire_report.md`.
+3. Dated reports make it easier to compare recommendations across time.
+4. The workflow still uses Flaim-style sample snapshot CSVs and sample projections.
+
+### Known limitations
+
+1. Snapshot files are not yet date-stamped automatically.
+2. The workflow does not yet save dated intermediate ranked-player CSVs.
+3. The workflow does not yet include live schedule, matchup, or transaction context.
+4. The workflow still depends on sample projection data.
+
+### Project decision
+
+Use dated markdown reports for archived waiver analysis runs, while keeping `waiver_wire_report.md` as the latest human-readable output.
