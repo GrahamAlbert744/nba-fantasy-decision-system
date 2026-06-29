@@ -570,3 +570,30 @@ Date: 2026-06-29
 ### Project decision
 
 Use dated markdown reports for archived waiver analysis runs, while keeping `waiver_wire_report.md` as the latest human-readable output.
+
+
+---
+
+## Phase 3L — Date-Stamped Flaim Snapshot Assumptions
+
+Date: 2026-06-29
+
+### Current assumptions
+
+1. Flaim-style roster and free-agent snapshots should be archived with dated filenames.
+2. Stable latest snapshot files should also be maintained for the reusable waiver workflow.
+3. Dated snapshots make it easier to trace which inputs produced each waiver report.
+4. The current snapshot builder still uses pasted Flaim response examples.
+
+### Known limitations
+
+1. The snapshot builder does not yet call Flaim directly from Python.
+2. The snapshot builder does not yet save raw JSON responses.
+3. The workflow does not yet automatically pair a specific dated snapshot with a specific dated report.
+4. Projection data is still manually created sample data.
+
+### Project decision
+
+Maintain both dated archive snapshots and stable latest snapshot files in `data/league_snapshots/`.
+
+Future versions should save raw Flaim responses, dated CSV snapshots, and dated reports from the same run.
