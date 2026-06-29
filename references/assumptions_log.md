@@ -460,3 +460,89 @@ Date: 2026-06-26
 
 &#x20;  value\_delta + category\_fit\_score
 
+
+
+
+
+\---
+
+
+
+\## Phase 3H — Reusable Waiver Workflow Assumptions
+
+
+
+Date: 2026-06-26
+
+
+
+\### Current assumptions
+
+
+
+1\. The waiver-wire process should be runnable from one script.
+
+2\. The workflow currently uses sample free-agent, roster, and projection CSVs.
+
+3\. The workflow produces a markdown report in `data/outputs/`.
+
+4\. The workflow uses balanced 9-category scoring by default.
+
+5\. The workflow can later support other punt strategies by changing the `punt\_strategy` argument.
+
+
+
+\### Known limitations
+
+
+
+1\. The workflow is not yet pulling live Flaim data directly into local CSVs.
+
+2\. The workflow still depends on manually created sample projection data.
+
+3\. The workflow does not yet include schedule volume.
+
+4\. The workflow does not yet include live matchup context.
+
+5\. The workflow does not yet include transaction limits or waiver priority.
+
+
+
+\### Project decision
+
+
+
+Use `scripts/run\_waiver\_analysis.py` as the main reusable waiver-wire entry point.
+
+
+
+Future versions should replace sample CSV inputs with live Flaim snapshots and real projection data.
+
+
+---
+
+## Phase 3I — Flaim Snapshot Assumptions
+
+Date: 2026-06-28
+
+### Current assumptions
+
+1. Flaim roster and free-agent responses should be converted into local dataframe snapshots.
+2. Snapshot files should retain Yahoo/Flaim identifiers such as `player_key` and `player_id`.
+3. Snapshot files should retain player metadata such as team, position, status, and roster slot.
+4. Free-agent snapshots should retain `percent_owned` when available, even though current values may be null.
+5. Local snapshots are a bridge between live connector output and the Python analysis pipeline.
+
+### Known limitations
+
+1. The current snapshot builder uses manually pasted Flaim response examples.
+2. The workflow does not yet call Flaim directly from Python.
+3. The current projections are still sample data.
+4. The waiver pipeline does not yet consume snapshot files directly.
+5. Snapshot filenames are currently sample names, not date-stamped production names.
+
+### Project decision
+
+Use `src/nba_fantasy/snapshots.py` as the conversion layer between Flaim connector output and local CSV snapshots.
+
+Future versions should date-stamp snapshots and feed them into the waiver analysis workflow.
