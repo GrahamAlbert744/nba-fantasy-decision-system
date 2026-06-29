@@ -12,7 +12,8 @@ The module currently supports:
 - Rostered-player rankings
 - Drop-candidate detection
 - Add/drop value-delta recommendations
-- Category-level z-score retention for later category-fit analysis
+- Category-level z-score retention for category-fit analysis
+- Graceful handling of players missing projection data
 """
 
 from __future__ import annotations
@@ -20,6 +21,52 @@ from __future__ import annotations
 import pandas as pd
 
 from nba_fantasy.scoring import add_9cat_scores
+
+
+SCORING_COLUMNS = [
+    "player",
+    "pts",
+    "reb",
+    "ast",
+    "stl",
+    "blk",
+    "threes",
+    "fg_pct",
+    "fga",
+    "ft_pct",
+    "fta",
+    "to",
+]
+
+PROJECTION_COLUMNS = [
+    "pts",
+    "reb",
+    "ast",
+    "stl",
+    "blk",
+    "threes",
+    "fg_pct",
+    "fga",
+    "ft_pct",
+    "fta",
+    "to",
+]
+
+PLAYER_METADATA_COLUMNS = [
+    "player",
+    "team",
+    "position",
+    "status",
+    "roster_slot",
+    "player_key",
+    "player_id",
+    "percent_owned",
+    "fantasy_team_key",
+    "fantasy_team_name",
+    "owner_name",
+    "league_key",
+    "league_name",
+]
 
 
 def normalize_player_name(name: str) -> str:
@@ -31,8 +78,12 @@ def normalize_player_name(name: str) -> str:
     "P.J. Washington" -> "pj washington"
     "De'Anthony Melton" -> "deanthony melton"
     """
+    if pd.isna(name):
+        return ""
+
     return (
-        name.lower()
+        str(name)
+        .lower()
         .replace(".", "")
         .replace("'", "")
         .replace("-", " ")
@@ -57,10 +108,10 @@ def add_player_join_key(
     Returns
     -------
     pd.DataFrame
-        Copy of dataframe with `player_key` added.
+        Copy of dataframe with `player_key_join` added.
     """
     out = df.copy()
-    out["player_key"] = out[player_col].apply(normalize_player_name)
+    out["player_key_join"] = out[player_col].apply(normalize_player_name)
     return out
 
 
@@ -77,7 +128,7 @@ def join_players_to_projections(
     ----------
     players:
         DataFrame containing player metadata such as player, team, position,
-        status, and optionally roster_slot.
+        status, roster_slot, player_id, player_key, and related fields.
     projections:
         DataFrame containing projected fantasy stat fields.
 
@@ -89,14 +140,20 @@ def join_players_to_projections(
     player_metadata = add_player_join_key(players)
     projected_stats = add_player_join_key(projections)
 
+    projection_cols_to_drop = ["player"]
+
+    projected_stats_for_join = projected_stats.drop(
+        columns=[col for col in projection_cols_to_drop if col in projected_stats.columns]
+    )
+
     joined = player_metadata.merge(
-        projected_stats.drop(columns=["player"]),
-        on="player_key",
+        projected_stats_for_join,
+        on="player_key_join",
         how="left",
         suffixes=("", "_projection"),
     )
 
-    return joined.drop(columns=["player_key"])
+    return joined.drop(columns=["player_key_join"])
 
 
 def join_free_agents_to_projections(
@@ -110,6 +167,59 @@ def join_free_agents_to_projections(
         players=free_agents,
         projections=projections,
     )
+
+
+def get_players_missing_projection_data(
+    joined_players: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Return players that are missing one or more required projection fields.
+
+    This is useful for auditing snapshot/projection joins.
+    """
+    available_projection_columns = [
+        col for col in PROJECTION_COLUMNS if col in joined_players.columns
+    ]
+
+    if not available_projection_columns:
+        return joined_players.copy()
+
+    missing_mask = joined_players[available_projection_columns].isna().any(axis=1)
+
+    metadata_columns = [
+        col for col in PLAYER_METADATA_COLUMNS if col in joined_players.columns
+    ]
+
+    return joined_players.loc[missing_mask, metadata_columns].reset_index(drop=True)
+
+
+def filter_players_with_complete_projections(
+    joined_players: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Keep only players with complete projection data.
+
+    Flaim snapshots may contain more players than the current sample projection
+    file. Those unmatched players should be skipped rather than scored with
+    missing values.
+    """
+    missing_projection_columns = [
+        col for col in PROJECTION_COLUMNS if col not in joined_players.columns
+    ]
+
+    if missing_projection_columns:
+        missing = ", ".join(missing_projection_columns)
+        raise ValueError(f"Missing projection columns after join: {missing}")
+
+    scorable_players = joined_players.dropna(subset=PROJECTION_COLUMNS).copy()
+
+    if scorable_players.empty:
+        raise ValueError(
+            "No players have complete projection data. "
+            "Check that player names match between the player snapshot and projection file."
+        )
+
+    return scorable_players
 
 
 def rank_players_with_projections(
@@ -134,25 +244,17 @@ def rank_players_with_projections(
     pd.DataFrame
         Ranked players with metadata, projected stats, category z-scores,
         and total 9-category value.
+
+    Notes
+    -----
+    Players without complete projection data are skipped. This allows the
+    workflow to use larger Flaim snapshots even when the sample projection
+    dataset only covers a subset of players.
     """
     joined = join_players_to_projections(players, projections)
+    scorable_players = filter_players_with_complete_projections(joined)
 
-    scoring_columns = [
-        "player",
-        "pts",
-        "reb",
-        "ast",
-        "stl",
-        "blk",
-        "threes",
-        "fg_pct",
-        "fga",
-        "ft_pct",
-        "fta",
-        "to",
-    ]
-
-    players_to_score = joined[scoring_columns].copy()
+    players_to_score = scorable_players[SCORING_COLUMNS].copy()
 
     scored = add_9cat_scores(
         players_to_score,
@@ -160,12 +262,10 @@ def rank_players_with_projections(
     )
 
     metadata_columns = [
-        col
-        for col in ["player", "team", "position", "status", "roster_slot"]
-        if col in joined.columns
+        col for col in PLAYER_METADATA_COLUMNS if col in scorable_players.columns
     ]
 
-    metadata = joined[metadata_columns].copy()
+    metadata = scorable_players[metadata_columns].copy()
 
     ranked = metadata.merge(
         scored,
@@ -284,6 +384,9 @@ def create_add_drop_recommendations(
         "team_add",
         "position_add",
         "status_add",
+        "player_key_add",
+        "player_id_add",
+        "percent_owned_add",
         "total_9cat_z_add",
         "pts_z_add",
         "reb_z_add",
@@ -299,6 +402,8 @@ def create_add_drop_recommendations(
         "position_drop",
         "status_drop",
         "roster_slot",
+        "player_key_drop",
+        "player_id_drop",
         "total_9cat_z_drop",
         "pts_z_drop",
         "reb_z_drop",
