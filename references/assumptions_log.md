@@ -597,3 +597,51 @@ Date: 2026-06-29
 Maintain both dated archive snapshots and stable latest snapshot files in `data/league_snapshots/`.
 
 Future versions should save raw Flaim responses, dated CSV snapshots, and dated reports from the same run.
+
+
+
+---
+
+## Phase 3N — Prompt Library Integration Assumptions
+
+Date: 2026-07-01
+
+### Current assumptions
+
+1. Connector prompts should be saved as reusable Markdown files in `prompts/`.
+2. Flaim Fantasy remains the primary connector for Yahoo league context.
+3. DraftKings remains optional and should only be used if it adds useful schedule or team context.
+4. Prompt files are part of the project workflow, not throwaway chat text.
+5. Prompt outputs should eventually be saved into `data/outputs/`, `data/raw/`, or `data/league_snapshots/` depending on the output type.
+
+### Prompt files added
+
+- `prompts/flaim_league_audit.md`
+- `prompts/flaim_roster_snapshot.md`
+- `prompts/flaim_free_agent_snapshot.md`
+- `prompts/flaim_waiver_wire.md`
+- `prompts/flaim_drop_candidates.md`
+- `prompts/flaim_start_sit.md`
+- `prompts/flaim_weekly_matchup_audit.md`
+- `prompts/flaim_trade_finder.md`
+- `prompts/flaim_trade_offer_evaluator.md`
+- `prompts/flaim_injury_role_monitor.md`
+- `prompts/flaim_draft_assistant.md`
+- `prompts/draftkings_schedule_context.md`
+- `prompts/flaim_live_data_capture_instructions.md`
+- `prompts/flaim_projection_gap_review.md`
+- `prompts/project_audit.md`
+
+### Known limitations
+
+1. The prompts are reusable templates, not automated connector calls.
+2. The project still needs raw Flaim JSON saving.
+3. The project still needs real player projection ingestion.
+4. The project still needs live schedule and matchup context.
+5. Prompt outputs still need a standard save location and naming convention.
+
+### Project decision
+
+Treat `prompts/` as the project’s reusable connector instruction library.
+
+Future versions should connect prompt outputs to saved raw JSON, CSV snapshots, and dated markdown reports.
