@@ -645,3 +645,33 @@ Date: 2026-07-01
 Treat `prompts/` as the project’s reusable connector instruction library.
 
 Future versions should connect prompt outputs to saved raw JSON, CSV snapshots, and dated markdown reports.
+
+
+---
+
+## Phase 3P — Raw JSON Paths in Waiver Manifest Assumptions
+
+Date: 2026-07-01
+
+### Current assumptions
+
+1. Waiver run manifests should record both raw connector inputs and transformed CSV snapshots.
+2. Raw Flaim-style JSON files are saved in `data/raw/`.
+3. Transformed Flaim-style CSV snapshots are saved in `data/league_snapshots/`.
+4. Projection files remain in `data/interim/` for now.
+5. Report files remain in `data/outputs/`.
+6. Run manifests remain in `data/run_manifests/`.
+
+### Known limitations
+
+1. Raw JSON files are still sample Flaim-style responses, not direct live API captures.
+2. The manifest records file paths but does not yet compute file hashes.
+3. The manifest does not yet record Git commit hash.
+4. The manifest does not yet record Python or package versions.
+5. The manifest does not yet record Flaim connector request metadata.
+
+### Project decision
+
+Use the waiver run manifest as the central reproducibility record connecting raw inputs, transformed inputs, projection inputs, outputs, and model parameters.
+
+Future versions should add file hashes, Git commit hash, environment metadata, and connector request metadata.

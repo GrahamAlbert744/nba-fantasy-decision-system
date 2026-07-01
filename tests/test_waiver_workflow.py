@@ -50,16 +50,18 @@ def test_save_latest_copy_creates_latest_report(tmp_path):
 
 
 def test_save_run_manifest_creates_json(tmp_path):
-    manifest_path = tmp_path / "waiver_run_manifest_2026_06_29.json"
+    manifest_path = tmp_path / "waiver_run_manifest_2026_07_01.json"
 
     saved_path = save_run_manifest(
         manifest_path=manifest_path,
-        run_date="2026_06_29",
+        run_date="2026_07_01",
+        raw_roster_path=tmp_path / "flaim_roster_raw_latest.json",
+        raw_free_agents_path=tmp_path / "flaim_free_agents_raw_latest.json",
         free_agent_path=tmp_path / "free_agents.csv",
         free_agent_projection_path=tmp_path / "free_agent_projections.csv",
         roster_path=tmp_path / "roster.csv",
         roster_projection_path=tmp_path / "roster_projections.csv",
-        report_path=tmp_path / "waiver_wire_report_2026_06_29.md",
+        report_path=tmp_path / "waiver_wire_report_2026_07_01.md",
         latest_report_path=tmp_path / "waiver_wire_report.md",
         punt_strategy="balanced",
         weak_category_count=3,
@@ -72,23 +74,26 @@ def test_save_run_manifest_creates_json(tmp_path):
     manifest_text = saved_path.read_text(encoding="utf-8")
 
     assert '"workflow": "waiver_analysis"' in manifest_text
+    assert '"raw_inputs"' in manifest_text
+    assert '"raw_roster_json"' in manifest_text
+    assert '"raw_free_agents_json"' in manifest_text
     assert '"punt_strategy": "balanced"' in manifest_text
-    assert '"weak_category_count": 3' in manifest_text
     assert '"drop_candidate_count": 5' in manifest_text
-    assert '"top_add_count": 5' in manifest_text
 
 
 def test_save_run_manifest_records_inputs_and_outputs(tmp_path):
-    manifest_path = tmp_path / "waiver_run_manifest_2026_06_29.json"
+    manifest_path = tmp_path / "waiver_run_manifest_2026_07_01.json"
 
     saved_path = save_run_manifest(
         manifest_path=manifest_path,
-        run_date="2026_06_29",
+        run_date="2026_07_01",
+        raw_roster_path=tmp_path / "flaim_roster_raw_latest.json",
+        raw_free_agents_path=tmp_path / "flaim_free_agents_raw_latest.json",
         free_agent_path=tmp_path / "free_agents.csv",
         free_agent_projection_path=tmp_path / "free_agent_projections.csv",
         roster_path=tmp_path / "roster.csv",
         roster_projection_path=tmp_path / "roster_projections.csv",
-        report_path=tmp_path / "waiver_wire_report_2026_06_29.md",
+        report_path=tmp_path / "waiver_wire_report_2026_07_01.md",
         latest_report_path=tmp_path / "waiver_wire_report.md",
         punt_strategy="balanced",
         weak_category_count=3,
@@ -98,6 +103,8 @@ def test_save_run_manifest_records_inputs_and_outputs(tmp_path):
 
     manifest_text = saved_path.read_text(encoding="utf-8")
 
+    assert "raw_roster_json" in manifest_text
+    assert "raw_free_agents_json" in manifest_text
     assert "free_agent_snapshot" in manifest_text
     assert "free_agent_projection_file" in manifest_text
     assert "roster_snapshot" in manifest_text

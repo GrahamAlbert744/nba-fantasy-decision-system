@@ -45,17 +45,6 @@ def run_waiver_analysis(
 ) -> Path:
     """
     Run the full waiver-wire analysis workflow.
-
-    This workflow:
-    1. Loads Flaim-style free-agent and roster snapshot CSVs.
-    2. Loads projection CSVs.
-    3. Scores available and rostered players.
-    4. Identifies team weak categories.
-    5. Identifies drop candidates.
-    6. Creates add/drop recommendations.
-    7. Adds category-fit scores.
-    8. Adds recommendation tiers and confidence labels.
-    9. Saves a markdown waiver report.
     """
     free_agents = pd.read_csv(free_agent_path)
     free_agent_projections = pd.read_csv(free_agent_projection_path)
@@ -133,6 +122,8 @@ def save_latest_copy(
 def save_run_manifest(
     manifest_path: Path,
     run_date: str,
+    raw_roster_path: Path,
+    raw_free_agents_path: Path,
     free_agent_path: Path,
     free_agent_projection_path: Path,
     roster_path: Path,
@@ -147,16 +138,22 @@ def save_run_manifest(
     """
     Save a JSON manifest describing one waiver-analysis run.
 
-    The manifest records the input files, output files, model parameters,
-    and known limitations for reproducibility.
+    The manifest records raw connector inputs, transformed snapshot inputs,
+    projection files, output reports, model parameters, and known limitations.
     """
     manifest = {
         "run_date": run_date,
         "workflow": "waiver_analysis",
-        "inputs": {
+        "raw_inputs": {
+            "raw_roster_json": str(raw_roster_path),
+            "raw_free_agents_json": str(raw_free_agents_path),
+        },
+        "transformed_inputs": {
             "free_agent_snapshot": str(free_agent_path),
-            "free_agent_projection_file": str(free_agent_projection_path),
             "roster_snapshot": str(roster_path),
+        },
+        "projection_inputs": {
+            "free_agent_projection_file": str(free_agent_projection_path),
             "roster_projection_file": str(roster_projection_path),
         },
         "outputs": {
@@ -170,6 +167,7 @@ def save_run_manifest(
             "top_add_count": top_add_count,
         },
         "known_limitations": [
+            "Uses Flaim-style sample raw JSON files.",
             "Uses Flaim-style sample snapshot CSVs.",
             "Uses manually created sample projection files.",
             "Does not yet include live matchup context.",
@@ -191,6 +189,7 @@ def save_run_manifest(
 
 
 def main() -> None:
+    raw_dir = PROJECT_ROOT / "data" / "raw"
     snapshot_dir = PROJECT_ROOT / "data" / "league_snapshots"
     interim_dir = PROJECT_ROOT / "data" / "interim"
     output_dir = PROJECT_ROOT / "data" / "outputs"
@@ -200,6 +199,9 @@ def main() -> None:
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
     date_stamp = get_date_stamp()
+
+    raw_roster_path = raw_dir / "flaim_roster_raw_latest.json"
+    raw_free_agents_path = raw_dir / "flaim_free_agents_raw_latest.json"
 
     free_agent_path = snapshot_dir / "flaim_free_agents_snapshot_sample.csv"
     free_agent_projection_path = interim_dir / "sample_player_projections.csv"
@@ -235,6 +237,8 @@ def main() -> None:
     saved_manifest_path = save_run_manifest(
         manifest_path=manifest_path,
         run_date=date_stamp,
+        raw_roster_path=raw_roster_path,
+        raw_free_agents_path=raw_free_agents_path,
         free_agent_path=free_agent_path,
         free_agent_projection_path=free_agent_projection_path,
         roster_path=roster_path,
