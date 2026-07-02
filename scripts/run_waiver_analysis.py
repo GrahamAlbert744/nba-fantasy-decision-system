@@ -1,8 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import hashlib
 import json
+import platform
 import shutil
+import subprocess
 import sys
 
 import pandas as pd
@@ -31,6 +33,13 @@ def get_date_stamp() -> str:
     Return a YYYY_MM_DD date stamp for output filenames.
     """
     return datetime.now().strftime("%Y_%m_%d")
+
+
+def get_created_at_timestamp() -> str:
+    """
+    Return an ISO-8601 UTC timestamp for the manifest.
+    """
+    return datetime.now(timezone.utc).isoformat()
 
 
 def calculate_file_sha256(path: Path) -> str | None:
@@ -64,6 +73,99 @@ def file_record(path: Path) -> dict:
         "exists": path.exists(),
         "size_bytes": path.stat().st_size if path.exists() else None,
         "sha256": calculate_file_sha256(path),
+    }
+
+
+def run_git_command(
+    args: list[str],
+    project_root: Path = PROJECT_ROOT,
+) -> str | None:
+    """
+    Run a git command and return stdout.
+
+    Returns None if git is unavailable or the command fails.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    output = completed.stdout.strip()
+    return output if output else None
+
+
+def get_git_commit_hash(project_root: Path = PROJECT_ROOT) -> str | None:
+    """
+    Return the current Git commit hash.
+    """
+    return run_git_command(["rev-parse", "HEAD"], project_root=project_root)
+
+
+def get_git_branch(project_root: Path = PROJECT_ROOT) -> str | None:
+    """
+    Return the current Git branch name.
+    """
+    return run_git_command(
+        ["rev-parse", "--abbrev-ref", "HEAD"],
+        project_root=project_root,
+    )
+
+
+def get_git_is_dirty(project_root: Path = PROJECT_ROOT) -> bool | None:
+    """
+    Return whether the working tree has uncommitted changes.
+
+    Returns None if git is unavailable.
+    """
+    status_output = run_git_command(
+        ["status", "--porcelain"],
+        project_root=project_root,
+    )
+
+    if status_output is None:
+        clean_check = run_git_command(
+            ["rev-parse", "--is-inside-work-tree"],
+            project_root=project_root,
+        )
+        if clean_check is None:
+            return None
+        return False
+
+    return bool(status_output)
+
+
+def get_environment_metadata(
+    project_root: Path = PROJECT_ROOT,
+    script_name: str = "scripts/run_waiver_analysis.py",
+) -> dict:
+    """
+    Return Git, Python, pandas, platform, project, and command metadata.
+    """
+    return {
+        "created_at": get_created_at_timestamp(),
+        "project_root": str(project_root),
+        "script": script_name,
+        "command": f"python {script_name}",
+        "git_commit_hash": get_git_commit_hash(project_root=project_root),
+        "git_branch": get_git_branch(project_root=project_root),
+        "git_is_dirty": get_git_is_dirty(project_root=project_root),
+        "python_version": sys.version,
+        "python_executable": sys.executable,
+        "pandas_version": pd.__version__,
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "version": platform.version(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "python_implementation": platform.python_implementation(),
+        },
     }
 
 
@@ -169,16 +271,22 @@ def save_run_manifest(
     weak_category_count: int,
     drop_candidate_count: int,
     top_add_count: int,
+    environment_metadata: dict | None = None,
 ) -> Path:
     """
     Save a JSON manifest describing one waiver-analysis run.
 
     The manifest records raw connector inputs, transformed snapshot inputs,
-    projection files, output reports, model parameters, file sizes, and hashes.
+    projection files, output reports, model parameters, file metadata, hashes,
+    Git metadata, and environment metadata.
     """
+    if environment_metadata is None:
+        environment_metadata = get_environment_metadata()
+
     manifest = {
         "run_date": run_date,
         "workflow": "waiver_analysis",
+        "environment": environment_metadata,
         "raw_inputs": {
             "raw_roster_json": file_record(raw_roster_path),
             "raw_free_agents_json": file_record(raw_free_agents_path),
@@ -209,8 +317,10 @@ def save_run_manifest(
             "Does not yet include schedule volume.",
             "Does not yet include transaction limits or waiver priority.",
             "Does not yet include real injury severity.",
-            "Does not yet record Git commit hash.",
-            "Does not yet record Python or package versions.",
+            "Git dirty status may be true during active development before committing.",
+            "Package metadata is currently limited to pandas version.",
+            "Does not yet record full pip freeze or conda environment export.",
+            "Does not yet record Flaim connector request metadata.",
         ],
     }
 

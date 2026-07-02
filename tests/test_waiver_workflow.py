@@ -8,6 +8,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from scripts.run_waiver_analysis import (
     calculate_file_sha256,
     file_record,
+    get_environment_metadata,
+    get_git_branch,
+    get_git_commit_hash,
+    get_git_is_dirty,
     run_waiver_analysis,
     save_latest_copy,
     save_run_manifest,
@@ -74,7 +78,38 @@ def test_file_record_includes_metadata(tmp_path):
     assert len(record["sha256"]) == 64
 
 
-def test_save_run_manifest_creates_json_with_hashes(tmp_path):
+def test_git_metadata_helpers_return_expected_types():
+    commit_hash = get_git_commit_hash()
+    branch = get_git_branch()
+    is_dirty = get_git_is_dirty()
+
+    assert commit_hash is None or isinstance(commit_hash, str)
+    assert branch is None or isinstance(branch, str)
+    assert is_dirty is None or isinstance(is_dirty, bool)
+
+
+def test_get_environment_metadata_contains_required_fields():
+    metadata = get_environment_metadata(project_root=PROJECT_ROOT)
+
+    assert "created_at" in metadata
+    assert "project_root" in metadata
+    assert "script" in metadata
+    assert "command" in metadata
+    assert "git_commit_hash" in metadata
+    assert "git_branch" in metadata
+    assert "git_is_dirty" in metadata
+    assert "python_version" in metadata
+    assert "python_executable" in metadata
+    assert "pandas_version" in metadata
+    assert "platform" in metadata
+
+    assert metadata["project_root"] == str(PROJECT_ROOT)
+    assert metadata["command"] == "python scripts/run_waiver_analysis.py"
+    assert isinstance(metadata["platform"], dict)
+    assert "system" in metadata["platform"]
+
+
+def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp_path):
     raw_roster_path = tmp_path / "flaim_roster_raw_latest.json"
     raw_free_agents_path = tmp_path / "flaim_free_agents_raw_latest.json"
     free_agent_path = tmp_path / "free_agents.csv"
@@ -97,6 +132,27 @@ def test_save_run_manifest_creates_json_with_hashes(tmp_path):
     ]:
         path.write_text("test content", encoding="utf-8")
 
+    environment_metadata = {
+        "created_at": "2026-07-02T12:00:00+00:00",
+        "project_root": str(PROJECT_ROOT),
+        "script": "scripts/run_waiver_analysis.py",
+        "command": "python scripts/run_waiver_analysis.py",
+        "git_commit_hash": "abc123",
+        "git_branch": "main",
+        "git_is_dirty": False,
+        "python_version": "3.11.test",
+        "python_executable": "python",
+        "pandas_version": "2.test",
+        "platform": {
+            "system": "Windows",
+            "release": "test",
+            "version": "test",
+            "machine": "AMD64",
+            "processor": "test",
+            "python_implementation": "CPython",
+        },
+    }
+
     saved_path = save_run_manifest(
         manifest_path=manifest_path,
         run_date="2026_07_02",
@@ -112,6 +168,7 @@ def test_save_run_manifest_creates_json_with_hashes(tmp_path):
         weak_category_count=3,
         drop_candidate_count=5,
         top_add_count=5,
+        environment_metadata=environment_metadata,
     )
 
     assert saved_path.exists()
@@ -119,6 +176,12 @@ def test_save_run_manifest_creates_json_with_hashes(tmp_path):
     manifest = json.loads(saved_path.read_text(encoding="utf-8"))
 
     assert manifest["workflow"] == "waiver_analysis"
+    assert manifest["environment"]["git_commit_hash"] == "abc123"
+    assert manifest["environment"]["git_branch"] == "main"
+    assert manifest["environment"]["git_is_dirty"] is False
+    assert manifest["environment"]["python_version"] == "3.11.test"
+    assert manifest["environment"]["pandas_version"] == "2.test"
+    assert manifest["environment"]["platform"]["system"] == "Windows"
     assert manifest["raw_inputs"]["raw_roster_json"]["exists"] is True
     assert manifest["raw_inputs"]["raw_roster_json"]["sha256"] is not None
     assert len(manifest["raw_inputs"]["raw_roster_json"]["sha256"]) == 64

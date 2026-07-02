@@ -703,3 +703,31 @@ Date: 2026-07-02
 Use SHA-256 file hashes as the first reproducibility check for waiver-analysis inputs and outputs.
 
 Future versions should add Git commit hash and environment metadata.
+
+---
+
+## Phase 3R — Git and Environment Metadata in Waiver Manifest Assumptions
+
+Date: 2026-07-02
+
+### Current assumptions
+
+1. Waiver run manifests should record Git metadata, environment metadata, input files, output files, parameters, file sizes, and SHA-256 hashes.
+2. Git metadata should include the current commit hash, branch, and dirty working-tree status.
+3. Environment metadata should include the creation timestamp, project root, script name, command, Python version, Python executable, pandas version, and platform/system information.
+4. The manifest is now the central reproducibility record for a waiver-analysis run.
+5. `git_is_dirty` may be true during active development before files are committed.
+
+### Known limitations
+
+1. The manifest records pandas version but does not yet record the full package environment.
+2. The manifest does not yet export `pip freeze`.
+3. The manifest does not yet export a conda environment file.
+4. The manifest does not yet record live Flaim connector request metadata.
+5. The workflow still uses sample raw JSON, sample snapshots, and sample projection data.
+
+### Project decision
+
+Use Git metadata and environment metadata to make waiver reports easier to reproduce, debug, and audit.
+
+Future versions should add full package manifests, real projection ingestion, schedule context, and live Flaim connector capture metadata.
