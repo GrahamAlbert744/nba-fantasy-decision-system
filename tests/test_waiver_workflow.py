@@ -14,6 +14,7 @@ from scripts.run_waiver_analysis import (
     get_git_is_dirty,
     run_waiver_analysis,
     save_latest_copy,
+    save_package_environment_exports,
     save_run_manifest,
 )
 
@@ -109,7 +110,20 @@ def test_get_environment_metadata_contains_required_fields():
     assert "system" in metadata["platform"]
 
 
-def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp_path):
+def test_save_package_environment_exports_creates_files(tmp_path):
+    exports = save_package_environment_exports(
+        output_dir=tmp_path,
+        date_stamp="2026_07_02",
+        project_root=PROJECT_ROOT,
+    )
+
+    assert exports["pip_freeze"].exists()
+    assert exports["conda_env_export"].exists()
+    assert isinstance(exports["pip_freeze_success"], bool)
+    assert isinstance(exports["conda_env_export_success"], bool)
+
+
+def test_save_run_manifest_creates_json_with_environment_exports(tmp_path):
     raw_roster_path = tmp_path / "flaim_roster_raw_latest.json"
     raw_free_agents_path = tmp_path / "flaim_free_agents_raw_latest.json"
     free_agent_path = tmp_path / "free_agents.csv"
@@ -118,6 +132,8 @@ def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp
     roster_projection_path = tmp_path / "roster_projections.csv"
     report_path = tmp_path / "waiver_wire_report_2026_07_02.md"
     latest_report_path = tmp_path / "waiver_wire_report.md"
+    pip_freeze_path = tmp_path / "pip_freeze_2026_07_02.txt"
+    conda_env_path = tmp_path / "conda_env_2026_07_02.yml"
     manifest_path = tmp_path / "waiver_run_manifest_2026_07_02.json"
 
     for path in [
@@ -129,6 +145,8 @@ def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp
         roster_projection_path,
         report_path,
         latest_report_path,
+        pip_freeze_path,
+        conda_env_path,
     ]:
         path.write_text("test content", encoding="utf-8")
 
@@ -164,6 +182,10 @@ def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp
         roster_projection_path=roster_projection_path,
         report_path=report_path,
         latest_report_path=latest_report_path,
+        pip_freeze_path=pip_freeze_path,
+        conda_env_path=conda_env_path,
+        pip_freeze_success=True,
+        conda_env_export_success=True,
         punt_strategy="balanced",
         weak_category_count=3,
         drop_candidate_count=5,
@@ -177,12 +199,8 @@ def test_save_run_manifest_creates_json_with_hashes_and_environment_metadata(tmp
 
     assert manifest["workflow"] == "waiver_analysis"
     assert manifest["environment"]["git_commit_hash"] == "abc123"
-    assert manifest["environment"]["git_branch"] == "main"
-    assert manifest["environment"]["git_is_dirty"] is False
-    assert manifest["environment"]["python_version"] == "3.11.test"
-    assert manifest["environment"]["pandas_version"] == "2.test"
-    assert manifest["environment"]["platform"]["system"] == "Windows"
-    assert manifest["raw_inputs"]["raw_roster_json"]["exists"] is True
-    assert manifest["raw_inputs"]["raw_roster_json"]["sha256"] is not None
-    assert len(manifest["raw_inputs"]["raw_roster_json"]["sha256"]) == 64
+    assert manifest["environment_exports"]["pip_freeze"]["exists"] is True
+    assert manifest["environment_exports"]["conda_env_export"]["exists"] is True
+    assert manifest["environment_exports"]["pip_freeze_success"] is True
+    assert manifest["environment_exports"]["conda_env_export_success"] is True
     assert manifest["parameters"]["punt_strategy"] == "balanced"

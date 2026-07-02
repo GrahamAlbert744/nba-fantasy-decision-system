@@ -29,25 +29,14 @@ from nba_fantasy.waiver import (
 
 
 def get_date_stamp() -> str:
-    """
-    Return a YYYY_MM_DD date stamp for output filenames.
-    """
     return datetime.now().strftime("%Y_%m_%d")
 
 
 def get_created_at_timestamp() -> str:
-    """
-    Return an ISO-8601 UTC timestamp for the manifest.
-    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def calculate_file_sha256(path: Path) -> str | None:
-    """
-    Calculate the SHA-256 hash of a file.
-
-    Returns None if the file does not exist.
-    """
     path = Path(path)
 
     if not path.exists():
@@ -63,9 +52,6 @@ def calculate_file_sha256(path: Path) -> str | None:
 
 
 def file_record(path: Path) -> dict:
-    """
-    Return file path, existence, size, and SHA-256 hash metadata.
-    """
     path = Path(path)
 
     return {
@@ -80,11 +66,6 @@ def run_git_command(
     args: list[str],
     project_root: Path = PROJECT_ROOT,
 ) -> str | None:
-    """
-    Run a git command and return stdout.
-
-    Returns None if git is unavailable or the command fails.
-    """
     try:
         completed = subprocess.run(
             ["git", *args],
@@ -100,17 +81,100 @@ def run_git_command(
     return output if output else None
 
 
+def run_command_capture(
+    command: list[str],
+    project_root: Path = PROJECT_ROOT,
+) -> tuple[bool, str]:
+    """
+    Run a command and return success plus captured stdout/stderr.
+
+    This is used for environment exports. It intentionally does not crash
+    the waiver workflow if conda is unavailable.
+    """
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError as error:
+        return False, f"COMMAND_NOT_FOUND: {error}"
+
+    output_parts = []
+
+    if completed.stdout:
+        output_parts.append(completed.stdout.strip())
+
+    if completed.stderr:
+        output_parts.append("\nSTDERR:\n" + completed.stderr.strip())
+
+    output = "\n".join(output_parts).strip()
+
+    if not output:
+        output = f"Command exited with return code {completed.returncode}."
+
+    return completed.returncode == 0, output
+
+
+def save_text_file(
+    path: Path,
+    text: str,
+) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def save_package_environment_exports(
+    output_dir: Path,
+    date_stamp: str,
+    project_root: Path = PROJECT_ROOT,
+) -> dict:
+    """
+    Save pip freeze and conda environment exports for reproducibility.
+
+    If conda export fails, the failure output is still saved so the manifest
+    records what happened.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    pip_freeze_path = output_dir / f"pip_freeze_{date_stamp}.txt"
+    conda_env_path = output_dir / f"conda_env_{date_stamp}.yml"
+
+    pip_success, pip_output = run_command_capture(
+        [sys.executable, "-m", "pip", "freeze"],
+        project_root=project_root,
+    )
+
+    conda_success, conda_output = run_command_capture(
+        ["conda", "env", "export", "--no-builds"],
+        project_root=project_root,
+    )
+
+    if not pip_success:
+        pip_output = f"# pip freeze failed\n\n{pip_output}"
+
+    if not conda_success:
+        conda_output = f"# conda env export failed\n\n{conda_output}"
+
+    save_text_file(pip_freeze_path, pip_output + "\n")
+    save_text_file(conda_env_path, conda_output + "\n")
+
+    return {
+        "pip_freeze": pip_freeze_path,
+        "conda_env_export": conda_env_path,
+        "pip_freeze_success": pip_success,
+        "conda_env_export_success": conda_success,
+    }
+
+
 def get_git_commit_hash(project_root: Path = PROJECT_ROOT) -> str | None:
-    """
-    Return the current Git commit hash.
-    """
     return run_git_command(["rev-parse", "HEAD"], project_root=project_root)
 
 
 def get_git_branch(project_root: Path = PROJECT_ROOT) -> str | None:
-    """
-    Return the current Git branch name.
-    """
     return run_git_command(
         ["rev-parse", "--abbrev-ref", "HEAD"],
         project_root=project_root,
@@ -118,11 +182,6 @@ def get_git_branch(project_root: Path = PROJECT_ROOT) -> str | None:
 
 
 def get_git_is_dirty(project_root: Path = PROJECT_ROOT) -> bool | None:
-    """
-    Return whether the working tree has uncommitted changes.
-
-    Returns None if git is unavailable.
-    """
     status_output = run_git_command(
         ["status", "--porcelain"],
         project_root=project_root,
@@ -144,9 +203,6 @@ def get_environment_metadata(
     project_root: Path = PROJECT_ROOT,
     script_name: str = "scripts/run_waiver_analysis.py",
 ) -> dict:
-    """
-    Return Git, Python, pandas, platform, project, and command metadata.
-    """
     return {
         "created_at": get_created_at_timestamp(),
         "project_root": str(project_root),
@@ -180,9 +236,6 @@ def run_waiver_analysis(
     drop_candidate_count: int = 5,
     top_add_count: int = 5,
 ) -> Path:
-    """
-    Run the full waiver-wire analysis workflow.
-    """
     free_agents = pd.read_csv(free_agent_path)
     free_agent_projections = pd.read_csv(free_agent_projection_path)
 
@@ -248,9 +301,6 @@ def save_latest_copy(
     source_path: Path,
     latest_path: Path,
 ) -> Path:
-    """
-    Copy a dated report to a stable latest-report filename.
-    """
     latest_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source_path, latest_path)
     return latest_path
@@ -267,19 +317,16 @@ def save_run_manifest(
     roster_projection_path: Path,
     report_path: Path,
     latest_report_path: Path,
+    pip_freeze_path: Path,
+    conda_env_path: Path,
+    pip_freeze_success: bool,
+    conda_env_export_success: bool,
     punt_strategy: str,
     weak_category_count: int,
     drop_candidate_count: int,
     top_add_count: int,
     environment_metadata: dict | None = None,
 ) -> Path:
-    """
-    Save a JSON manifest describing one waiver-analysis run.
-
-    The manifest records raw connector inputs, transformed snapshot inputs,
-    projection files, output reports, model parameters, file metadata, hashes,
-    Git metadata, and environment metadata.
-    """
     if environment_metadata is None:
         environment_metadata = get_environment_metadata()
 
@@ -287,6 +334,12 @@ def save_run_manifest(
         "run_date": run_date,
         "workflow": "waiver_analysis",
         "environment": environment_metadata,
+        "environment_exports": {
+            "pip_freeze": file_record(pip_freeze_path),
+            "conda_env_export": file_record(conda_env_path),
+            "pip_freeze_success": pip_freeze_success,
+            "conda_env_export_success": conda_env_export_success,
+        },
         "raw_inputs": {
             "raw_roster_json": file_record(raw_roster_path),
             "raw_free_agents_json": file_record(raw_free_agents_path),
@@ -318,8 +371,6 @@ def save_run_manifest(
             "Does not yet include transaction limits or waiver priority.",
             "Does not yet include real injury severity.",
             "Git dirty status may be true during active development before committing.",
-            "Package metadata is currently limited to pandas version.",
-            "Does not yet record full pip freeze or conda environment export.",
             "Does not yet record Flaim connector request metadata.",
         ],
     }
@@ -380,6 +431,12 @@ def main() -> None:
         latest_path=latest_output_path,
     )
 
+    environment_exports = save_package_environment_exports(
+        output_dir=manifest_dir,
+        date_stamp=date_stamp,
+        project_root=PROJECT_ROOT,
+    )
+
     saved_manifest_path = save_run_manifest(
         manifest_path=manifest_path,
         run_date=date_stamp,
@@ -391,6 +448,10 @@ def main() -> None:
         roster_projection_path=roster_projection_path,
         report_path=saved_report_path,
         latest_report_path=latest_report_path,
+        pip_freeze_path=environment_exports["pip_freeze"],
+        conda_env_path=environment_exports["conda_env_export"],
+        pip_freeze_success=environment_exports["pip_freeze_success"],
+        conda_env_export_success=environment_exports["conda_env_export_success"],
         punt_strategy=punt_strategy,
         weak_category_count=weak_category_count,
         drop_candidate_count=drop_candidate_count,
@@ -399,6 +460,8 @@ def main() -> None:
 
     print(f"\nSaved dated waiver-wire report to: {saved_report_path}")
     print(f"Saved latest waiver-wire report to: {latest_report_path}")
+    print(f"Saved pip freeze export to: {environment_exports['pip_freeze']}")
+    print(f"Saved conda env export to: {environment_exports['conda_env_export']}")
     print(f"Saved waiver run manifest to: {saved_manifest_path}")
 
 

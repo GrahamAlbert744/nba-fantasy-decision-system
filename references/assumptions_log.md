@@ -731,3 +731,31 @@ Date: 2026-07-02
 Use Git metadata and environment metadata to make waiver reports easier to reproduce, debug, and audit.
 
 Future versions should add full package manifests, real projection ingestion, schedule context, and live Flaim connector capture metadata.
+
+---
+
+## Phase 3S — Package Environment Export Assumptions
+
+Date: 2026-07-02
+
+### Current assumptions
+
+1. Waiver run manifests should record package/environment exports in addition to Git and platform metadata.
+2. Each waiver run should save a dated `pip freeze` export.
+3. Each waiver run should attempt to save a dated `conda env export --no-builds` export.
+4. The manifest should record file metadata and SHA-256 hashes for both environment export files.
+5. If a package export command fails, the failure output should still be saved to a file for debugging.
+
+### Known limitations
+
+1. The environment export files may include platform-specific package details.
+2. `conda env export` may fail if conda is not available in the active shell.
+3. The workflow still uses sample raw JSON, sample snapshots, and sample projection data.
+4. The manifest still does not record live Flaim connector request metadata.
+5. The workflow still does not include real projection ingestion, schedule context, or matchup context.
+
+### Project decision
+
+Use `pip freeze` and `conda env export --no-builds` as reproducibility artifacts for each waiver-analysis run.
+
+Future versions should add live Flaim connector metadata and real projection ingestion.
