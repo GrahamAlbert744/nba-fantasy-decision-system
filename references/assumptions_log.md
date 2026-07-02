@@ -675,3 +675,31 @@ Date: 2026-07-01
 Use the waiver run manifest as the central reproducibility record connecting raw inputs, transformed inputs, projection inputs, outputs, and model parameters.
 
 Future versions should add file hashes, Git commit hash, environment metadata, and connector request metadata.
+
+
+---
+
+## Phase 3Q — File Hashes in Waiver Manifest Assumptions
+
+Date: 2026-07-02
+
+### Current assumptions
+
+1. Waiver run manifests should record file metadata for raw inputs, transformed inputs, projection inputs, and outputs.
+2. File metadata should include path, existence status, file size, and SHA-256 hash.
+3. SHA-256 hashes make it easier to detect whether a file changed after a report was generated.
+4. Hashes support reproducibility and debugging.
+
+### Known limitations
+
+1. The manifest still does not record Git commit hash.
+2. The manifest still does not record Python version.
+3. The manifest still does not record package versions.
+4. The manifest still does not record Flaim connector request metadata.
+5. The manifest still uses sample raw JSON and sample projection data.
+
+### Project decision
+
+Use SHA-256 file hashes as the first reproducibility check for waiver-analysis inputs and outputs.
+
+Future versions should add Git commit hash and environment metadata.

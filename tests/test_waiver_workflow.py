@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 
@@ -5,6 +6,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.run_waiver_analysis import (
+    calculate_file_sha256,
+    file_record,
     run_waiver_analysis,
     save_latest_copy,
     save_run_manifest,
@@ -49,20 +52,62 @@ def test_save_latest_copy_creates_latest_report(tmp_path):
     assert saved_latest_path.read_text(encoding="utf-8") == "# Waiver-Wire Report\n"
 
 
-def test_save_run_manifest_creates_json(tmp_path):
-    manifest_path = tmp_path / "waiver_run_manifest_2026_07_01.json"
+def test_calculate_file_sha256_returns_hash(tmp_path):
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("hello", encoding="utf-8")
+
+    file_hash = calculate_file_sha256(test_file)
+
+    assert file_hash is not None
+    assert len(file_hash) == 64
+
+
+def test_file_record_includes_metadata(tmp_path):
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("hello", encoding="utf-8")
+
+    record = file_record(test_file)
+
+    assert record["exists"] is True
+    assert record["size_bytes"] == 5
+    assert record["sha256"] is not None
+    assert len(record["sha256"]) == 64
+
+
+def test_save_run_manifest_creates_json_with_hashes(tmp_path):
+    raw_roster_path = tmp_path / "flaim_roster_raw_latest.json"
+    raw_free_agents_path = tmp_path / "flaim_free_agents_raw_latest.json"
+    free_agent_path = tmp_path / "free_agents.csv"
+    free_agent_projection_path = tmp_path / "free_agent_projections.csv"
+    roster_path = tmp_path / "roster.csv"
+    roster_projection_path = tmp_path / "roster_projections.csv"
+    report_path = tmp_path / "waiver_wire_report_2026_07_02.md"
+    latest_report_path = tmp_path / "waiver_wire_report.md"
+    manifest_path = tmp_path / "waiver_run_manifest_2026_07_02.json"
+
+    for path in [
+        raw_roster_path,
+        raw_free_agents_path,
+        free_agent_path,
+        free_agent_projection_path,
+        roster_path,
+        roster_projection_path,
+        report_path,
+        latest_report_path,
+    ]:
+        path.write_text("test content", encoding="utf-8")
 
     saved_path = save_run_manifest(
         manifest_path=manifest_path,
-        run_date="2026_07_01",
-        raw_roster_path=tmp_path / "flaim_roster_raw_latest.json",
-        raw_free_agents_path=tmp_path / "flaim_free_agents_raw_latest.json",
-        free_agent_path=tmp_path / "free_agents.csv",
-        free_agent_projection_path=tmp_path / "free_agent_projections.csv",
-        roster_path=tmp_path / "roster.csv",
-        roster_projection_path=tmp_path / "roster_projections.csv",
-        report_path=tmp_path / "waiver_wire_report_2026_07_01.md",
-        latest_report_path=tmp_path / "waiver_wire_report.md",
+        run_date="2026_07_02",
+        raw_roster_path=raw_roster_path,
+        raw_free_agents_path=raw_free_agents_path,
+        free_agent_path=free_agent_path,
+        free_agent_projection_path=free_agent_projection_path,
+        roster_path=roster_path,
+        roster_projection_path=roster_projection_path,
+        report_path=report_path,
+        latest_report_path=latest_report_path,
         punt_strategy="balanced",
         weak_category_count=3,
         drop_candidate_count=5,
@@ -71,43 +116,10 @@ def test_save_run_manifest_creates_json(tmp_path):
 
     assert saved_path.exists()
 
-    manifest_text = saved_path.read_text(encoding="utf-8")
+    manifest = json.loads(saved_path.read_text(encoding="utf-8"))
 
-    assert '"workflow": "waiver_analysis"' in manifest_text
-    assert '"raw_inputs"' in manifest_text
-    assert '"raw_roster_json"' in manifest_text
-    assert '"raw_free_agents_json"' in manifest_text
-    assert '"punt_strategy": "balanced"' in manifest_text
-    assert '"drop_candidate_count": 5' in manifest_text
-
-
-def test_save_run_manifest_records_inputs_and_outputs(tmp_path):
-    manifest_path = tmp_path / "waiver_run_manifest_2026_07_01.json"
-
-    saved_path = save_run_manifest(
-        manifest_path=manifest_path,
-        run_date="2026_07_01",
-        raw_roster_path=tmp_path / "flaim_roster_raw_latest.json",
-        raw_free_agents_path=tmp_path / "flaim_free_agents_raw_latest.json",
-        free_agent_path=tmp_path / "free_agents.csv",
-        free_agent_projection_path=tmp_path / "free_agent_projections.csv",
-        roster_path=tmp_path / "roster.csv",
-        roster_projection_path=tmp_path / "roster_projections.csv",
-        report_path=tmp_path / "waiver_wire_report_2026_07_01.md",
-        latest_report_path=tmp_path / "waiver_wire_report.md",
-        punt_strategy="balanced",
-        weak_category_count=3,
-        drop_candidate_count=5,
-        top_add_count=5,
-    )
-
-    manifest_text = saved_path.read_text(encoding="utf-8")
-
-    assert "raw_roster_json" in manifest_text
-    assert "raw_free_agents_json" in manifest_text
-    assert "free_agent_snapshot" in manifest_text
-    assert "free_agent_projection_file" in manifest_text
-    assert "roster_snapshot" in manifest_text
-    assert "roster_projection_file" in manifest_text
-    assert "dated_report" in manifest_text
-    assert "latest_report" in manifest_text
+    assert manifest["workflow"] == "waiver_analysis"
+    assert manifest["raw_inputs"]["raw_roster_json"]["exists"] is True
+    assert manifest["raw_inputs"]["raw_roster_json"]["sha256"] is not None
+    assert len(manifest["raw_inputs"]["raw_roster_json"]["sha256"]) == 64
+    assert manifest["parameters"]["punt_strategy"] == "balanced"

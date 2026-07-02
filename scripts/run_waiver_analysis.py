@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import hashlib
 import json
 import shutil
 import sys
@@ -30,6 +31,40 @@ def get_date_stamp() -> str:
     Return a YYYY_MM_DD date stamp for output filenames.
     """
     return datetime.now().strftime("%Y_%m_%d")
+
+
+def calculate_file_sha256(path: Path) -> str | None:
+    """
+    Calculate the SHA-256 hash of a file.
+
+    Returns None if the file does not exist.
+    """
+    path = Path(path)
+
+    if not path.exists():
+        return None
+
+    sha256 = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(8192), b""):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
+def file_record(path: Path) -> dict:
+    """
+    Return file path, existence, size, and SHA-256 hash metadata.
+    """
+    path = Path(path)
+
+    return {
+        "path": str(path),
+        "exists": path.exists(),
+        "size_bytes": path.stat().st_size if path.exists() else None,
+        "sha256": calculate_file_sha256(path),
+    }
 
 
 def run_waiver_analysis(
@@ -139,26 +174,26 @@ def save_run_manifest(
     Save a JSON manifest describing one waiver-analysis run.
 
     The manifest records raw connector inputs, transformed snapshot inputs,
-    projection files, output reports, model parameters, and known limitations.
+    projection files, output reports, model parameters, file sizes, and hashes.
     """
     manifest = {
         "run_date": run_date,
         "workflow": "waiver_analysis",
         "raw_inputs": {
-            "raw_roster_json": str(raw_roster_path),
-            "raw_free_agents_json": str(raw_free_agents_path),
+            "raw_roster_json": file_record(raw_roster_path),
+            "raw_free_agents_json": file_record(raw_free_agents_path),
         },
         "transformed_inputs": {
-            "free_agent_snapshot": str(free_agent_path),
-            "roster_snapshot": str(roster_path),
+            "free_agent_snapshot": file_record(free_agent_path),
+            "roster_snapshot": file_record(roster_path),
         },
         "projection_inputs": {
-            "free_agent_projection_file": str(free_agent_projection_path),
-            "roster_projection_file": str(roster_projection_path),
+            "free_agent_projection_file": file_record(free_agent_projection_path),
+            "roster_projection_file": file_record(roster_projection_path),
         },
         "outputs": {
-            "dated_report": str(report_path),
-            "latest_report": str(latest_report_path),
+            "dated_report": file_record(report_path),
+            "latest_report": file_record(latest_report_path),
         },
         "parameters": {
             "punt_strategy": punt_strategy,
@@ -174,7 +209,8 @@ def save_run_manifest(
             "Does not yet include schedule volume.",
             "Does not yet include transaction limits or waiver priority.",
             "Does not yet include real injury severity.",
-            "Does not yet use projection file hashes or Git commit hash.",
+            "Does not yet record Git commit hash.",
+            "Does not yet record Python or package versions.",
         ],
     }
 
